@@ -1,5 +1,5 @@
-# 1. Build aşaması
-FROM node:20-alpine AS builder
+# 1. Next.js Build aşaması
+FROM node:20-alpine AS next-builder
 
 WORKDIR /app
 
@@ -9,20 +9,35 @@ RUN npm install --legacy-peer-deps
 COPY . .
 RUN npm run build
 
-# 2. Production aşaması
+# 2. Go API Build aşaması
+FROM golang:1.22-alpine AS go-builder
+
+WORKDIR /go-api
+
+COPY api/targets ./targets
+WORKDIR /go-api/targets
+RUN go mod init targets && go mod tidy
+RUN go build -o /go-api/targets-api main.go
+
+# 3. Production aşaması
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
-COPY --from=builder /app/node_modules ./node_modules
+# Next.js dosyalarını kopyala
+COPY --from=next-builder /app/package*.json ./
+COPY --from=next-builder /app/.next ./.next
+COPY --from=next-builder /app/public ./public
+COPY --from=next-builder /app/next.config.mjs ./next.config.mjs
+COPY --from=next-builder /app/node_modules ./node_modules
+
+# Go API binary'sini kopyala
+COPY --from=go-builder /go-api/targets-api /app/targets-api
 
 EXPOSE 3000
+EXPOSE 8080
 
 ENV NODE_ENV=production
 
-CMD ["npx", "next", "start"]
-
+# Hem Next.js hem Go API başlat
+CMD ["sh", "-c", "./targets-api & npx next start"]

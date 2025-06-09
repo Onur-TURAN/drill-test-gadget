@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, Play, Pause, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,56 +27,89 @@ interface Target {
   vulnCount: number
 }
 
-const mockTargets: Target[] = [
-  {
-    id: "1",
-    domain: "example.com",
-    program: "Example Bug Bounty",
-    status: "active",
-    lastScan: "2024-01-15 14:30",
-    vulnCount: 3,
-  },
-  {
-    id: "2",
-    domain: "test.org",
-    program: "Test Security Program",
-    status: "paused",
-    lastScan: "2024-01-14 09:15",
-    vulnCount: 1,
-  },
-]
-
 export function TargetManagement() {
-  const [targets, setTargets] = useState<Target[]>(mockTargets)
+  const [targets, setTargets] = useState<Target[]>([])
   const [newTarget, setNewTarget] = useState({ domain: "", program: "" })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const addTarget = () => {
-    if (newTarget.domain && newTarget.program) {
-      const target: Target = {
-        id: Date.now().toString(),
-        domain: newTarget.domain,
-        program: newTarget.program,
-        status: "paused",
-        lastScan: "Never",
-        vulnCount: 0,
-      }
-      setTargets([...targets, target])
-      setNewTarget({ domain: "", program: "" })
-      setIsDialogOpen(false)
+  // Hedefleri API'den çek
+  const fetchTargets = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/targets")
+      if (!res.ok) throw new Error("Failed to fetch targets")
+      const data = await res.json()
+      setTargets(data)
+    } catch (e: any) {
+      setError(e.message || "Unknown error")
+    } finally {
+      setLoading(false)
     }
   }
 
-  const toggleTargetStatus = (id: string) => {
-    setTargets(
-      targets.map((target) =>
-        target.id === id ? { ...target, status: target.status === "active" ? "paused" : "active" } : target,
-      ),
-    )
+  useEffect(() => {
+    fetchTargets()
+  }, [])
+
+  // Hedef ekle
+  const addTarget = async () => {
+    if (newTarget.domain && newTarget.program) {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch("/api/targets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...newTarget }),
+        })
+        if (!res.ok) throw new Error("Failed to add target")
+        setNewTarget({ domain: "", program: "" })
+        setIsDialogOpen(false)
+        fetchTargets()
+      } catch (e: any) {
+        setError(e.message || "Unknown error")
+      } finally {
+        setLoading(false)
+      }
+    }
   }
 
-  const deleteTarget = (id: string) => {
-    setTargets(targets.filter((target) => target.id !== id))
+  // Hedef durumunu değiştir
+  const toggleTargetStatus = async (id: string, currentStatus: Target["status"]) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const newStatus = currentStatus === "active" ? "paused" : "active"
+      const res = await fetch(`/api/targets/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error("Failed to update target status")
+      fetchTargets()
+    } catch (e: any) {
+      setError(e.message || "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Hedef sil
+  const deleteTarget = async (id: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/targets/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to delete target")
+      fetchTargets()
+    } catch (e: any) {
+      setError(e.message || "Unknown error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -131,8 +164,11 @@ export function TargetManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={addTarget}>Add Target</Button>
+              <Button onClick={addTarget} disabled={loading}>
+                Add Target
+              </Button>
             </DialogFooter>
+            {error && <div className="text-red-500 text-sm">{error}</div>}
           </DialogContent>
         </Dialog>
       </div>
@@ -143,6 +179,8 @@ export function TargetManagement() {
           <CardDescription>Monitor and control your reconnaissance targets</CardDescription>
         </CardHeader>
         <CardContent>
+          {loading && <div className="text-muted-foreground">Loading...</div>}
+          {error && <div className="text-red-500 text-sm">{error}</div>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -166,13 +204,23 @@ export function TargetManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => toggleTargetStatus(target.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleTargetStatus(target.id, target.status)}
+                        disabled={loading}
+                      >
                         {target.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       </Button>
                       <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => deleteTarget(target.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteTarget(target.id)}
+                        disabled={loading}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
