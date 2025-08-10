@@ -30,6 +30,7 @@ COPY --from=next-builder /app/.next ./.next
 COPY --from=next-builder /app/public ./public
 COPY --from=next-builder /app/next.config.mjs ./next.config.mjs
 COPY --from=next-builder /app/node_modules ./node_modules
+COPY --from=next-builder bugboouny-dashboard ./bugboouny-dashboard
 
 # Go API binary'sini kopyala
 COPY --from=go-builder /go-api/targets-api /app/targets-api
