@@ -20,5 +20,5 @@ func main() {
 	http.HandleFunc("/api/directory_api", directoryApiHandler)
 	http.HandleFunc("/api/dns_api", dnsApiHandler)
 	fmt.Println("API server running on :8080")
-	http.ListenAndServe(":8080", nil)
+	_ = http.ListenAndServe(":8080", nil)
 }
