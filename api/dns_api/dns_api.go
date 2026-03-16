@@ -1,4 +1,4 @@
-package directory_api
+package dns_api
 
 import (
 	"crypto/sha256"
@@ -133,7 +133,7 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 	wordlist := strings.Split(string(data), "\n")
 
 	// Fuzz işlemini başlat
-	results := dnsFuzz(domain, url, wordlist, fsFilter, statusFilter, threads)
+	results := DnsFuzz(domain, url, wordlist, fsFilter, statusFilter, threads)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
@@ -144,6 +144,3 @@ func Main() {
 	fmt.Println("API server running on :8080")
 	http.ListenAndServe(":8080", nil)
 }
-
-//go run api/dns_api.go
-//curl "http://localhost:8080/api/dns-fuzz?domain=yildiz.edu.tr&url=https://yildiz.edu.tr/&wordlist=utils/ss.txt&fs_filter=-1&status_filter=-1&threads=20"
