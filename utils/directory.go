@@ -1,4 +1,4 @@
-package directory
+package main
 
 import (
 	"bufio"
@@ -59,7 +59,7 @@ func worker(baseURL string, fsFilter int64, statusFilter int, refHash string, pa
 	}
 }
 
-func main() {
+func Directory() {
 	if len(os.Args) < 4 {
 		fmt.Println("Usage: dir_fuzz <BASE_URL> <WORDLIST> <FS_Filter> [Status_Filter] [Threads]")
 		os.Exit(1)
@@ -121,5 +121,3 @@ func main() {
 		fmt.Printf("[+] %s - Status: %d - Length: %d - Hash: %s\n", res.Path, res.Status, res.Length, res.BodyHash)
 	}
 }
-
-go run dir_fuzz.go https://yildiz.edu.tr ss.txt -1 -1 20
